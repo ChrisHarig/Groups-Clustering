@@ -1,0 +1,6 @@
+# Ignore python venv files
+venv/
+__pycache__/
+
+# Ignore team specific data 
+best_times/
