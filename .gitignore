@@ -4,3 +4,6 @@ __pycache__/
 
 # Ignore team specific data 
 best_times/
+
+# Ignore csv's 
+*.csv

@@ -21,7 +21,6 @@ def make_times_df(save_csv: bool):
         
         name = str(file_path).split('.csv')[0].replace('best_times/', '') # grab the name of the swimmer
         
-        # Add to grouped dataframe
         row_df = pd.DataFrame([[name]], columns=['Name'])
 
         for index, row in df.iterrows():
@@ -145,7 +144,7 @@ def create_metrics(normalized_df: pd.DataFrame, save_csv: bool):
         
         # Calculate stroke-specific strengths
         for stroke in range(1, 6):
-            stroke_name = ['free', 'fly', 'back', 'breast', 'im'][stroke-1]
+            stroke_name = ['fly', 'back', 'breast', 'free', 'im'][stroke-1]
             swimmer_metrics[f'{stroke_name}_strength'] = (
                 np.mean(stroke_performances[stroke]) if stroke_performances[stroke] else np.nan
             )
@@ -181,8 +180,15 @@ def reformat_time(time_val):
         
     return secs  
 
-def run():
-    new_df = create_metrics(normalize_to_NCAA_record(make_yards_times_df(make_times_df(False), False), False), False)
-    return new_df
+# Prints the rank of every swimmer in each category
+def print_rankings(metrics: pd.DataFrame):
+    for column in metrics.columns[1:]:
+        print(f'\n' + column + ' Rankings:')
+        sorted_df = metrics.sort_values(column)[['Name', column]]
+        print(sorted_df)
 
+# Runs this file to create the feature df to be clustered
+def run_metrics():
+    new_df = create_metrics(normalize_to_NCAA_record(make_yards_times_df(make_times_df(False), False), False), True)
+    return new_df
 

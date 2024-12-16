@@ -52,7 +52,7 @@ def cluster_swimmers(feature_df, max_clusters=10):
     plt.show()
     
     # Get optimal k via the silhouette score
-    optimal_k = silhouette_scores.index(max(silhouette_scores)) + 2 # optimal for this data is six clusters
+    optimal_k = range(2, max_clusters + 1)[np.argmax(silhouette_scores)] # optimal for this data is six clusters
     
     # Perform final clustering with optimal k
     final_kmeans = KMeans(n_clusters=optimal_k, random_state=42, n_init=10)
@@ -74,7 +74,7 @@ def cluster_swimmers(feature_df, max_clusters=10):
     print("\nClusters:")
     for i in range(optimal_k):
         cluster_size = (cluster_labels == i).sum()
-        print(f"\nCluster {i} ({cluster_size} swimmers):")
+        print(f"\nCluster {i+1} ({cluster_size} swimmers):")
         
         # Print top characteristics of this cluster
         cluster_center = cluster_centers.iloc[i]
@@ -82,11 +82,15 @@ def cluster_swimmers(feature_df, max_clusters=10):
         print("Top strengths:")
         for strength, value in top_strengths.items():
             print(f"-Average {strength}: {value:.2f}")
+    print("\n")
     
+    # Re-index clusters
+    results['Cluster'] = results['Cluster'] + 1
+
     return results, final_kmeans
 
 # Run the transform file to grab and format the data
-feature_df = transform.run()
+feature_df = transform.run_metrics()
 
 # Run the model on the current data and print the results
 results, model = cluster_swimmers(feature_df)
