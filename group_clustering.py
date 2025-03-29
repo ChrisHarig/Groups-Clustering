@@ -82,16 +82,46 @@ def cluster_swimmers(feature_df, max_clusters=10):
         print("Top strengths:")
         for strength, value in top_strengths.items():
             print(f"-Average {strength}: {value:.2f}")
+    
+    # Calculate and print feature importances
+    print("\nFeature Importances:")
+    
+    # Calculate the overall variance of each feature
+    feature_variances = np.var(scaled_features, axis=0)
+    
+    # Calculate the between-cluster variance for each feature
+    cluster_variances = np.zeros(scaled_features.shape[1])
+    for i in range(optimal_k):
+        mask = cluster_labels == i
+        cluster_mean = np.mean(scaled_features[mask], axis=0)
+        cluster_size = np.sum(mask)
+        cluster_variances += cluster_size * (cluster_mean ** 2)
+    cluster_variances /= len(scaled_features)
+    
+    # Calculate feature importance as ratio of between-cluster to total variance
+    feature_importance = cluster_variances / feature_variances
+    
+    # Create and sort feature importance DataFrame
+    importance_df = pd.DataFrame({
+        'Feature': features.columns,
+        'Importance': feature_importance
+    }).sort_values('Importance', ascending=False)
+    
+    # Print top 5 most important features
+    print("\nTop 5 Most Important Features:")
+    for _, row in importance_df.head().iterrows():
+        print(f"{row['Feature']}: {row['Importance']:.3f}")
+    
     print("\n")
     
     # Re-index clusters
     results['Cluster'] = results['Cluster'] + 1
 
-    return results, final_kmeans
+    return results, final_kmeans, importance_df
 
 # Run the transform file to grab and format the data
 feature_df = transform.run_metrics()
 
 # Run the model on the current data and print the results
-results, model = cluster_swimmers(feature_df)
+results, model, importance_df = cluster_swimmers(feature_df)
 print(results)
