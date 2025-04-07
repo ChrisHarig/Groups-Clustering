@@ -4,11 +4,13 @@ import matplotlib.pyplot as plt
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import silhouette_score
+from sklearn.decomposition import PCA
+import umap
 import transform
 
 
 # Performs K-means-clustering on the swimmers metrics derived in transform.py
-def cluster_swimmers(feature_df, max_clusters=10):
+def cluster_swimmers(feature_df, min_clusters=3, max_clusters=8, visualize=True):
     # Seperate 'Name' column
     if 'Name' in feature_df.columns:
         names = feature_df['Name']
@@ -28,34 +30,39 @@ def cluster_swimmers(feature_df, max_clusters=10):
     inertias = []
     silhouette_scores = []
     
-    for k in range(2, max_clusters + 1):
-        kmeans = KMeans(n_clusters=k, random_state=42, n_init=10) 
+    for k in range(min_clusters, max_clusters + 1):
+        kmeans = KMeans(n_clusters=k, random_state=42, n_init=20) 
         kmeans.fit(scaled_features)
         inertias.append(kmeans.inertia_)
-        silhouette_scores.append(silhouette_score(scaled_features, kmeans.labels_))
-    
-    # Plot elbow curve
-    plt.figure(figsize=(12, 5))
-    plt.subplot(1, 2, 1)
-    plt.plot(range(2, max_clusters + 1), inertias, 'bx-')
-    plt.xlabel('k')
-    plt.ylabel('Inertia')
-    plt.title('Elbow Method')
-    
-    # Plot silhouette scores
-    plt.subplot(1, 2, 2)
-    plt.plot(range(2, max_clusters + 1), silhouette_scores, 'rx-')
-    plt.xlabel('k')
-    plt.ylabel('Silhouette Score')
-    plt.title('Silhouette Score')
-    plt.tight_layout()
-    plt.show()
+        sil_score = silhouette_score(scaled_features, kmeans.labels_)
+        silhouette_scores.append(sil_score)
+        print(f"k={k}: silhouette score = {sil_score:.3f}")
     
     # Get optimal k via the silhouette score
-    optimal_k = range(2, max_clusters + 1)[np.argmax(silhouette_scores)] # optimal for this data is six clusters
+    optimal_k = range(min_clusters, max_clusters + 1)[np.argmax(silhouette_scores)]
+    print(f"\nSelected k={optimal_k} with silhouette score = {max(silhouette_scores):.3f}")
+    
+    if visualize:
+        # Plot elbow curve
+        plt.figure(figsize=(12, 5))
+        plt.subplot(1, 2, 1)
+        plt.plot(range(min_clusters, max_clusters + 1), inertias, 'bx-')
+        plt.xlabel('k')
+        plt.ylabel('Inertia')
+        plt.title('Elbow Method')
+        
+        # Plot silhouette scores
+        plt.subplot(1, 2, 2)
+        plt.plot(range(min_clusters, max_clusters + 1), silhouette_scores, 'rx-')
+        plt.xlabel('k')
+        plt.ylabel('Silhouette Score')
+        plt.title('Silhouette Score')
+        plt.grid(True)
+        plt.tight_layout()
+        plt.show()
     
     # Perform final clustering with optimal k
-    final_kmeans = KMeans(n_clusters=optimal_k, random_state=42, n_init=10)
+    final_kmeans = KMeans(n_clusters=optimal_k, random_state=42, n_init=20)
     cluster_labels = final_kmeans.fit_predict(scaled_features)
     
     # Create results dataframe
@@ -107,17 +114,89 @@ def cluster_swimmers(feature_df, max_clusters=10):
         'Importance': feature_importance
     }).sort_values('Importance', ascending=False)
     
-    # Print top 5 most important features
-    print("\nTop 5 Most Important Features:")
-    for _, row in importance_df.head().iterrows():
+    # Print all features and their importance scores
+    print("\nFeature Importance Rankings:")
+    for _, row in importance_df.iterrows():
         print(f"{row['Feature']}: {row['Importance']:.3f}")
     
     print("\n")
     
     # Re-index clusters
     results['Cluster'] = results['Cluster'] + 1
+    
+    if visualize:
+        # Create PCA visualization
+        visualize_pca(scaled_features, cluster_labels, optimal_k)
+        
+        # Create UMAP visualization
+        visualize_umap(scaled_features, cluster_labels, optimal_k)
 
     return results, final_kmeans, importance_df
+
+
+def visualize_pca(scaled_features, cluster_labels, n_clusters):
+    """
+    Create a PCA visualization of the clusters.
+    """
+    # Apply PCA to reduce to 2 dimensions
+    pca = PCA(n_components=2)
+    pca_result = pca.fit_transform(scaled_features)
+    
+    # Create a scatter plot
+    plt.figure(figsize=(10, 8))
+    
+    # Plot each cluster with a different color
+    for i in range(n_clusters):
+        mask = cluster_labels == i
+        plt.scatter(
+            pca_result[mask, 0], 
+            pca_result[mask, 1], 
+            label=f'Cluster {i+1}',
+            alpha=0.7
+        )
+    
+    plt.title('PCA Visualization of Clusters')
+    plt.xlabel(f'Principal Component 1 ({pca.explained_variance_ratio_[0]:.2%} variance)')
+    plt.ylabel(f'Principal Component 2 ({pca.explained_variance_ratio_[1]:.2%} variance)')
+    plt.legend()
+    plt.grid(True, linestyle='--', alpha=0.7)
+    plt.tight_layout()
+    plt.show()
+    
+    # Print the total explained variance
+    total_var = sum(pca.explained_variance_ratio_)
+    print(f"Total variance explained by 2 principal components: {total_var:.2%}")
+
+
+def visualize_umap(scaled_features, cluster_labels, n_clusters):
+    """
+    Create a UMAP visualization of the clusters.
+    """
+    # Apply UMAP 
+    reducer = umap.UMAP(random_state=42)
+    umap_result = reducer.fit_transform(scaled_features)
+    
+    # Create a scatter plot
+    plt.figure(figsize=(10, 8))
+    
+    # Plot each cluster with a different color
+    for i in range(n_clusters):
+        mask = cluster_labels == i
+        plt.scatter(
+            umap_result[mask, 0], 
+            umap_result[mask, 1], 
+            label=f'Cluster {i+1}',
+            alpha=0.7
+        )
+    
+    plt.title('UMAP Visualization of Clusters')
+    plt.xlabel('UMAP Dimension 1')
+    plt.ylabel('UMAP Dimension 2')
+    plt.legend()
+    plt.grid(True, linestyle='--', alpha=0.7)
+    plt.tight_layout()
+    plt.show()
+
 
 # Run the transform file to grab and format the data
 feature_df = transform.run_metrics()

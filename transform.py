@@ -121,11 +121,11 @@ def create_metrics(normalized_df: pd.DataFrame, save_csv: bool):
                 performance = row[event]
                 
                 # Categorize by distance, events can be in multiple categories
-                if profile['distance_score'] <= 3:
+                if profile['distance_score'] <= 2:
                     sprint_times.append(performance)
-                elif profile['distance_score'] in [3, 4]:
+                elif profile['distance_score'] == 3:
                     mid_times.append(performance)
-                elif profile['distance_score'] >= 4:
+                else:
                     distance_times.append(performance)
                 
                 # Collect stroke-specific performances
